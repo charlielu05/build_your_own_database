@@ -42,6 +42,48 @@ class BNode:
         
         self.data[pos:] = (val).to_bytes(8, byteorder='little')
     
+    # offset list
+    def getOffset(self, idx:int)->int:
+        if idx == 0:
+            return 0
+        
+        else:
+            pos = offsetPos(self, idx)
+            return int.from_bytes(self.data[pos : pos + 2], byteorder='little')
+    
+    def setOffset(self, idx:int, offset:int):
+        self.data[offsetPos(self, idx):] = (offset).to_bytes(2, byteorder='little') 
+        
+    # key-values
+    def kvPos(self, idx:int)->int:
+        assert idx <= self.nkeys
+        
+        return HEADER + 8 * self.nkeys + 2 * self.nkeys + self.getOffset(idx)
+    
+    def getKey(self, idx:int)->bytearray:
+        assert idx < self.nkeys
+        pos = self.kvPos(idx)
+        klen = int.from_bytes(self.data[pos : pos + 2])
+        
+        return self.data[pos + 4:][:klen]
+
+    def getVal(self, idx:int)->bytearray:
+        assert idx < self.nkeys
+        pos = self.kvPos(idx)
+        klen = int.from_bytes(self.data[pos : pos + 2])
+        vlen = int.from_bytes(self.data[pos + 2 : pos + 4])
+        
+        return self.data[pos + 4 + klen][:vlen]
+    
+    @property
+    def nbytes(self)->int:
+        return self.kvPos(self.nkeys)
+        
+def offsetPos(node:BNode, idx:int)->int:
+    assert (1 <= idx <= node.nkeys)
+    
+    return HEADER + 8 * node.nkeys + 2 * (idx - 1)
+
 @dataclass
 class BTree:
     root: int
